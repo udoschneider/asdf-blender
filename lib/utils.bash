@@ -17,19 +17,19 @@ platform() {
   local machine="$(uname -m)"
 
   case $operating_system in
-  GNU/Linux)
-    case $machine in
-    x86_64)
-      echo "linux-x86_64"
+    GNU/Linux)
+      case $machine in
+        x86_64)
+          echo "linux-x86_64"
+          ;;
+        *)
+          fail "Unsupported machine type ($machine)"
+          ;;
+      esac
       ;;
     *)
-      fail "Unsupported machine type ($machine)"
+      fail "Unsupported operating system type ($operating_system)"
       ;;
-    esac
-    ;;
-  *)
-    fail "Unsupported operating system type ($operating_system)"
-    ;;
   esac
 }
 
