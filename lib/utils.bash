@@ -13,24 +13,7 @@ fail() {
 curl_opt="-fsSL"
 
 platform() {
-  local operating_system="$(uname -o)"
-  local machine="$(uname -m)"
-
-  case $operating_system in
-    GNU/Linux)
-      case $machine in
-        x86_64)
-          echo "linux-x86_64"
-          ;;
-        *)
-          fail "Unsupported machine type ($machine)"
-          ;;
-      esac
-      ;;
-    *)
-      fail "Unsupported operating system type ($operating_system)"
-      ;;
-  esac
+  echo "$OSTYPE-$HOSTTYPE"
 }
 
 list_all_versions() {
@@ -130,16 +113,16 @@ linux_platform_identifier() {
   local release_i="${release,,}"
 
   if [[ $release_i =~ linux64 || $release_i =~ x86_64 ]]; then
-    echo "linux-x86_64"
+    echo "linux-gnu-x86_64"
     return 0
   elif [[ $release_i =~ i686 || $release_i =~ i386 ]]; then
-    echo "linux-i386"
+    echo "linux-gnu-i686"
     return 0
   elif [[ $release_i =~ powerpc ]]; then
-    echo "linux-ppc"
+    echo "linux-gnu-ppc"
     return 0
   elif [[ $release_i =~ alpha ]]; then
-    echo "linux-alpha"
+    echo "linux-gnu-alpha"
     return 0
   else
     fail "Couldn't parse platform in $release"
@@ -154,7 +137,7 @@ macos_platform_identifier() {
     echo "darwin-ppc"
     return 0
   elif [[ $release_i =~ i386 || $release_i =~ intel ]]; then
-    echo "darwin-i386"
+    echo "darwin-i686"
     return 0
   elif [[ $release_i =~ x86_64 ]]; then
     echo "darwin-x86_64"
