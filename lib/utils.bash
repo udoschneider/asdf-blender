@@ -72,7 +72,7 @@ list_binary_release_directories() {
   (
     curl "$curl_opt" -C - "$url" |
       grep -E 'href="Blender[[:digit:]]' |
-      sed -r 's/.*href="(Blender.*)\/".*/\1/g'
+      sed -E 's/.*href="(Blender.*)\/".*/\1/g'
   ) || fail "Could not fetch release directories from $url"
 }
 
@@ -93,7 +93,7 @@ list_binary_releases() {
   for binary_release_directory in $(list_binary_release_directories); do
     url="$BLENDER_DOWNLOADS$binary_release_directory/"
     (
-      releases=$(curl "$curl_opt" -C - "$url" | grep -E 'href="blender' | sed -r 's/.*href="(blender.*)".*/\1/g')
+      releases=$(curl "$curl_opt" -C - "$url" | grep -E 'href="blender' | sed -E 's/.*href="(blender.*)".*/\1/g')
       for release in $releases; do
         print_release "$release" "$url$release"
       done
@@ -104,7 +104,7 @@ list_binary_releases() {
 blender_version_identifier() {
   local release="$1"
   (
-    echo "$release" | sed -r 's/blender-?([[:digit:]]\.[^-_.]+).*/\1/g'
+    echo "$release" | sed -E 's/blender-?([[:digit:]]\.[^-_.]+).*/\1/g'
   ) || fail "Couldn't parse version in $release"
 }
 
@@ -153,7 +153,7 @@ linux_libc_identifier() {
   local release_i="${release,,}"
 
   if [[ $release_i =~ libc ]]; then
-    echo "$release" | sed -r 's/.*[_-](g?libc[^-]+).*/\1/g'
+    echo "$release" | sed -E 's/.*[_-](g?libc[^-]+).*/\1/g'
   else
     echo ""
   fi
