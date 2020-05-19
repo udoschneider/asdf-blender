@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-TMP_DIR="$(dirname $(mktemp -u -t asdf-blender-XXXX))/"
+CACHE_DIR="$(dirname $(mktemp -u -t asdf-blender-XXXX))/asdf-blender-cache/"
+mkdir -p "$CACHE_DIR"
 BLENDER_DOWNLOADS="https://download.blender.org/release/"
 
 fail() {
@@ -25,7 +26,7 @@ download_release() {
   local filename="$2"
 
   local url=$(list_binary_releases_cached | grep "$(platform)" | grep "$version" | cut -f 3)
-  local cached="${TMP_DIR}$(basename "$url")"
+  local cached="${CACHE_DIR}$(basename "$url")"
 
   if [ -e $cached ]; then
     echo "* Using cached blender release $version..."
@@ -77,7 +78,7 @@ list_binary_release_directories() {
 }
 
 list_binary_releases_cached() {
-  local cached_list_path="${TMP_DIR}asdf-blender-cached-binary-releases"
+  local cached_list_path="${CACHE_DIR}binary-releases"
   local timeout="$((30 * 60))"
 
   if [ -e "$cached_list_path" ] && [ "$(($(date +%s) - $(stat -L --format %Y $cached_list_path)))" -lt "$timeout" ]; then
