@@ -30,6 +30,16 @@ to_lowercase() {
   echo "$1" | tr '[:upper:]' '[:lower:]'
 }
 
+file_age() {
+  local path
+
+  path="$1"
+  case "$OSTYPE" in
+    darwin*) echo $(($(date +%s) - $(stat -c %Y "$path"))) ;;
+    *) echo $(($(date +%s) - $(stat -f "%m" "$path"))) ;;
+  esac
+}
+
 list_all_versions() {
   list_binary_releases_cached | grep "$(platform)" | cut -f 2
 }
@@ -94,7 +104,7 @@ list_binary_releases_cached() {
   local cached_list_path="${CACHE_DIR}binary-releases"
   local timeout="$((30 * 60))"
 
-  if [ -e "$cached_list_path" ] && [ $(($(date +%s) - $(stat -c %Y "$cached_list_path"))) -lt "$timeout" ]; then
+  if [ -e "$cached_list_path" ] && [ $(file_age "$cached_list_path") -lt "$timeout" ]; then
     cat "$cached_list_path"
   else
     list_binary_releases | tee "$cached_list_path"
