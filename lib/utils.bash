@@ -14,7 +14,20 @@ fail() {
 curl_opt="-fsSL"
 
 platform() {
-  echo "$OSTYPE-$HOSTTYPE"
+  local os_type host_type
+
+  case "$OSTYPE" in
+    linux*) os_type="linux" ;;
+    darwin*) os_type="darwin" ;;
+    *) os_type="$OSTYPE" ;;
+  esac
+  host_type="$HOSTTYPE"
+
+  echo "$os_type-$host_type"
+}
+
+to_lowercase() {
+  echo "$1" | tr '[:upper:]' '[:lower:]'
 }
 
 list_all_versions() {
@@ -111,19 +124,19 @@ blender_version_identifier() {
 
 linux_platform_identifier() {
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
 
   if [[ $release_i =~ linux64 || $release_i =~ x86_64 ]]; then
-    echo "linux-gnu-x86_64"
+    echo "linux-x86_64"
     return 0
   elif [[ $release_i =~ i686 || $release_i =~ i386 ]]; then
-    echo "linux-gnu-i686"
+    echo "linux-i686"
     return 0
   elif [[ $release_i =~ powerpc ]]; then
-    echo "linux-gnu-ppc"
+    echo "linux-ppc"
     return 0
   elif [[ $release_i =~ alpha ]]; then
-    echo "linux-gnu-alpha"
+    echo "linux-alpha"
     return 0
   else
     fail "Couldn't parse platform in $release"
@@ -132,7 +145,7 @@ linux_platform_identifier() {
 
 macos_platform_identifier() {
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
 
   if [[ $release_i =~ powerpc || $release_i =~ ppc ]]; then
     echo "darwin-ppc"
@@ -151,7 +164,7 @@ macos_platform_identifier() {
 
 linux_libc_identifier() {
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
 
   if [[ $release_i =~ libc ]]; then
     echo "$release" | sed -E 's/.*[_-](g?libc[^-]+).*/\1/g'
@@ -162,7 +175,7 @@ linux_libc_identifier() {
 
 linux_linked_identifier() {
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
 
   if [[ $release_i =~ "static" ]]; then
     echo "static"
@@ -173,7 +186,7 @@ linux_linked_identifier() {
 
 python_identifier() {
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
 
   if [[ $release_i =~ py ]]; then
     if [[ $release_i =~ py2\.?3 ]]; then
@@ -217,7 +230,7 @@ release_identifier() {
 print_release() {
   local platform identifier
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
   local url="$2"
 
   if [[ $release_i =~ linux ]]; then
