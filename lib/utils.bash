@@ -35,8 +35,8 @@ file_age() {
 
   path="$1"
   case "$OSTYPE" in
-    darwin*) echo $(($(date +%s) - $(stat -c %Y "$path"))) ;;
-    *) echo $(($(date +%s) - $(stat -f "%m" "$path"))) ;;
+    darwin*) echo $(($(date +%s) - $(stat -f "%m" "$path"))) ;;
+    *) echo $(($(date +%s) - $(stat -c %Y "$path"))) ;;
   esac
 }
 
