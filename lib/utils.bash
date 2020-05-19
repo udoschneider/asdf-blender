@@ -94,7 +94,7 @@ list_binary_releases_cached() {
   local cached_list_path="${CACHE_DIR}binary-releases"
   local timeout="$((30 * 60))"
 
-  if [ -e "$cached_list_path" ] && [ "$(($(date +%s) - $(stat -L --format %Y $cached_list_path)))" -lt "$timeout" ]; then
+  if [ -e "$cached_list_path" ] && [ $(($(date +%s) - $(stat -c %Y "$cached_list_path"))) -lt "$timeout" ]; then
     cat "$cached_list_path"
   else
     list_binary_releases | tee "$cached_list_path"
