@@ -11,6 +11,10 @@ fail() {
   exit 1
 }
 
+warn() {
+  >&2 echo -e "asdf-blender: $*"
+}
+
 curl_opt="-fsSL"
 
 platform() {
@@ -128,7 +132,7 @@ list_binary_releases() {
 blender_version_identifier() {
   local release="$1"
   (
-    echo "$release" | sed -E 's/blender-?([[:digit:]]\.[^-_.]+).*/\1/g'
+    echo "$release" | sed -E 's/blender-?([[:digit:]]\.[^-_.]+(\.[^-_.]+)?).*/\1/g'
   ) || fail "Couldn't parse version in $release"
 }
 
@@ -257,10 +261,10 @@ print_release() {
     return 0
   fi
 
-  if [[ $release_i =~ win || $release_i =~ freebsd || $release_i =~ solaris || $release_i =~ irix || $release_i =~ ubuntu || $release_i =~ beos || $release_i =~ mdv || $release_i =~ source || $release_i =~ script ]]; then
+  if [[ $release_i =~ win || $release_i =~ freebsd || $release_i =~ solaris || $release_i =~ irix || $release_i =~ ubuntu || $release_i =~ beos || $release_i =~ mdv || $release_i =~ source || $release_i =~ script || $release_i =~ blender1.0_files ]]; then
     # Ignore platform for now
     return 0
   fi
 
-  fail "Couldn't parse release $release"
+  warn "Couldn't parse release $release"
 }
