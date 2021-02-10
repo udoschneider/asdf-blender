@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-TMP_DIR="$(dirname $(mktemp -u -t asdf-blender-XXXX))/"
+CACHE_DIR="$(dirname $(mktemp -u -t asdf-blender-XXXX))/asdf-blender-cache/"
+mkdir -p "$CACHE_DIR"
 BLENDER_DOWNLOADS="https://download.blender.org/release/"
 
 fail() {
@@ -10,10 +11,37 @@ fail() {
   exit 1
 }
 
+warn() {
+  >&2 echo -e "asdf-blender: $*"
+}
+
 curl_opt="-fsSL"
 
 platform() {
-  echo "$OSTYPE-$HOSTTYPE"
+  local os_type host_type
+
+  case "$OSTYPE" in
+    linux*) os_type="linux" ;;
+    darwin*) os_type="darwin" ;;
+    *) os_type="$OSTYPE" ;;
+  esac
+  host_type="$HOSTTYPE"
+
+  echo "$os_type-$host_type"
+}
+
+to_lowercase() {
+  echo "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+file_age() {
+  local path
+
+  path="$1"
+  case "$OSTYPE" in
+    darwin*) echo $(($(date +%s) - $(stat -f "%m" "$path"))) ;;
+    *) echo $(($(date +%s) - $(stat -c %Y "$path"))) ;;
+  esac
 }
 
 list_all_versions() {
@@ -25,7 +53,7 @@ download_release() {
   local filename="$2"
 
   local url=$(list_binary_releases_cached | grep "$(platform)" | grep "$version" | cut -f 3)
-  local cached="${TMP_DIR}$(basename "$url")"
+  local cached="${CACHE_DIR}$(basename "$url")"
 
   if [ -e $cached ]; then
     echo "* Using cached blender release $version..."
@@ -72,15 +100,15 @@ list_binary_release_directories() {
   (
     curl "$curl_opt" -C - "$url" |
       grep -E 'href="Blender[[:digit:]]' |
-      sed -r 's/.*href="(Blender.*)\/".*/\1/g'
+      sed -E 's/.*href="(Blender.*)\/".*/\1/g'
   ) || fail "Could not fetch release directories from $url"
 }
 
 list_binary_releases_cached() {
-  local cached_list_path="${TMP_DIR}asdf-blender-cached-binary-releases"
+  local cached_list_path="${CACHE_DIR}binary-releases"
   local timeout="$((30 * 60))"
 
-  if [ -e "$cached_list_path" ] && [ "$(($(date +%s) - $(stat -L --format %Y $cached_list_path)))" -lt "$timeout" ]; then
+  if [ -e "$cached_list_path" ] && [ $(file_age "$cached_list_path") -lt "$timeout" ]; then
     cat "$cached_list_path"
   else
     list_binary_releases | tee "$cached_list_path"
@@ -93,7 +121,7 @@ list_binary_releases() {
   for binary_release_directory in $(list_binary_release_directories); do
     url="$BLENDER_DOWNLOADS$binary_release_directory/"
     (
-      releases=$(curl "$curl_opt" -C - "$url" | grep -E 'href="blender' | sed -r 's/.*href="(blender.*)".*/\1/g')
+      releases=$(curl "$curl_opt" -C - "$url" | grep -E 'href="blender' | sed -E 's/.*href="(blender.*)".*/\1/g')
       for release in $releases; do
         print_release "$release" "$url$release"
       done
@@ -104,25 +132,25 @@ list_binary_releases() {
 blender_version_identifier() {
   local release="$1"
   (
-    echo "$release" | sed -r 's/blender-?([[:digit:]]\.[^-_.]+).*/\1/g'
+    echo "$release" | sed -E 's/blender-?([[:digit:]]\.[^-_.]+(\.[^-_.]+)?).*/\1/g'
   ) || fail "Couldn't parse version in $release"
 }
 
 linux_platform_identifier() {
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
 
   if [[ $release_i =~ linux64 || $release_i =~ x86_64 ]]; then
-    echo "linux-gnu-x86_64"
+    echo "linux-x86_64"
     return 0
   elif [[ $release_i =~ i686 || $release_i =~ i386 ]]; then
-    echo "linux-gnu-i686"
+    echo "linux-i686"
     return 0
   elif [[ $release_i =~ powerpc ]]; then
-    echo "linux-gnu-ppc"
+    echo "linux-ppc"
     return 0
   elif [[ $release_i =~ alpha ]]; then
-    echo "linux-gnu-alpha"
+    echo "linux-alpha"
     return 0
   else
     fail "Couldn't parse platform in $release"
@@ -131,7 +159,7 @@ linux_platform_identifier() {
 
 macos_platform_identifier() {
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
 
   if [[ $release_i =~ powerpc || $release_i =~ ppc ]]; then
     echo "darwin-ppc"
@@ -150,10 +178,10 @@ macos_platform_identifier() {
 
 linux_libc_identifier() {
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
 
   if [[ $release_i =~ libc ]]; then
-    echo "$release" | sed -r 's/.*[_-](g?libc[^-]+).*/\1/g'
+    echo "$release" | sed -E 's/.*[_-](g?libc[^-]+).*/\1/g'
   else
     echo ""
   fi
@@ -161,7 +189,7 @@ linux_libc_identifier() {
 
 linux_linked_identifier() {
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
 
   if [[ $release_i =~ "static" ]]; then
     echo "static"
@@ -172,7 +200,7 @@ linux_linked_identifier() {
 
 python_identifier() {
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
 
   if [[ $release_i =~ py ]]; then
     if [[ $release_i =~ py2\.?3 ]]; then
@@ -216,7 +244,7 @@ release_identifier() {
 print_release() {
   local platform identifier
   local release="$1"
-  local release_i="${release,,}"
+  local release_i=$(to_lowercase "$release")
   local url="$2"
 
   if [[ $release_i =~ linux ]]; then
@@ -233,10 +261,10 @@ print_release() {
     return 0
   fi
 
-  if [[ $release_i =~ win || $release_i =~ freebsd || $release_i =~ solaris || $release_i =~ irix || $release_i =~ ubuntu || $release_i =~ beos || $release_i =~ mdv || $release_i =~ source || $release_i =~ script ]]; then
+  if [[ $release_i =~ win || $release_i =~ freebsd || $release_i =~ solaris || $release_i =~ irix || $release_i =~ ubuntu || $release_i =~ beos || $release_i =~ mdv || $release_i =~ source || $release_i =~ script || $release_i =~ blender1.0_files ]]; then
     # Ignore platform for now
     return 0
   fi
 
-  fail "Couldn't parse release $release"
+  warn "Couldn't parse release $release"
 }
