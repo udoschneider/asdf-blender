@@ -6,6 +6,14 @@ CACHE_DIR="$(dirname $(mktemp -u -t asdf-blender-XXXX))/asdf-blender-cache/"
 mkdir -p "$CACHE_DIR"
 BLENDER_DOWNLOADS="https://download.blender.org/release/"
 
+# fatal uses SIGUSR1 to allow clean fatal errors
+trap "exit 1" 10
+PROC=$$
+fatal(){
+  echo "$@" >&2
+  kill -10 $PROC
+}
+
 fail() {
   echo 1>&2 -e "asdf-blender: $*"
   exit 1
@@ -14,6 +22,12 @@ fail() {
 warn() {
   >&2 echo -e "asdf-blender: $*"
 }
+
+trace() {
+  # echo -e "asdf-blender: ${FUNCNAME[1]}: $*" >/dev/tty
+  true
+}
+
 
 curl_opt="-fsSL"
 
@@ -120,6 +134,7 @@ list_binary_releases() {
 
   for binary_release_directory in $(list_binary_release_directories); do
     url="$BLENDER_DOWNLOADS$binary_release_directory/"
+    trace $url
     (
       releases=$(curl "$curl_opt" -C - "$url" | grep -E 'href="blender' | sed -E 's/.*href="(blender.*)".*/\1/g')
       for release in $releases; do
@@ -140,7 +155,8 @@ linux_platform_identifier() {
   local release="$1"
   local release_i=$(to_lowercase "$release")
 
-  if [[ $release_i =~ linux64 || $release_i =~ x86_64 ]]; then
+  trace "$release"
+  if [[ $release_i =~ linux64 || $release_i =~ x86_64 || $release_i =~ x64 ]]; then
     echo "linux-x86_64"
     return 0
   elif [[ $release_i =~ i686 || $release_i =~ i386 ]]; then
@@ -154,6 +170,7 @@ linux_platform_identifier() {
     return 0
   else
     fail "Couldn't parse platform in $release"
+    return 1
   fi
 }
 
@@ -247,9 +264,12 @@ print_release() {
   local release_i=$(to_lowercase "$release")
   local url="$2"
 
+  trace "Parsing $release"
+
   if [[ $release_i =~ linux ]]; then
     platform=$(linux_platform_identifier "$release")
     identifier=$(release_identifier "$release")
+    trace "Parse Result: $platform\t$identifier\t$url"
     echo -e "$platform\t$identifier\t$url"
     return 0
   fi
